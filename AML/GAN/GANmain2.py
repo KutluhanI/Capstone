@@ -1,6 +1,8 @@
 from IPython import display
 import numpy as np
-from matplotlib import pyplot as plt
+import matplotlib
+matplotlib.use('TkAgg')  # Use a different backend, e.g., 'TkAgg' or 'Qt5Agg'
+import matplotlib.pyplot as plt
 import progressbar
 
 import torch
