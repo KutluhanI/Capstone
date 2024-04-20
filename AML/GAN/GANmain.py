@@ -59,7 +59,7 @@ dataset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True,
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=64,shuffle=True)
 
 latent_dim = 100
-num_epochs = 100
+num_epochs = 10
 lr = 0.0002
 beta1 = 0.5
 
@@ -125,10 +125,10 @@ for epoch in range(num_epochs):
             print(f"Epoch [{epoch}/{num_epochs}], Step [{i}/{len(dataloader)}], D_loss: {d_loss.item():.4f}, G_loss: {g_loss.item():.4f}")
 
     # Save generated images every 10 epochs
-    if (epoch + 1) % 10 == 0:
+    if (epoch + 1) % 1 == 0:
         with torch.no_grad():
             fake_images = generator(fixed_noise)
-            torchvision.utils.save_image(fake_images, "C:/Users/emircan.karakus/PycharmProjects/GANs_1/generated_images/epoch_{}.png".format(epoch + 1), nrow=8, normalize=True)
+            torchvision.utils.save_image(fake_images, "C:/Users/FatPinguin/PycharmProjects/GANs_trial_1/generated_images/epoch_{}.png".format(epoch + 1), nrow=8, normalize=True)
 
 
             ##The output shows the loss values for the discriminator (D_loss) and the generator (G_loss) at two different steps during the first epoch of training. Specifically, it shows the losses after the first step and after the 100th step.
