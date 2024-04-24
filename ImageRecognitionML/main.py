@@ -81,5 +81,7 @@ with torch.no_grad():
         total += labels.size(0)
         correct += (predicted == labels).sum().item()
 
+torch.save(net.state_dict(), 'image_recognition_model.pth')
+
 print('Accuracy of the network on the 10000 test images: %d %%' % (
     100 * correct / total))
