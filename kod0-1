@@ -1,0 +1,93 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision import datasets, transforms
+import matplotlib.pyplot as plt
+import numpy as np
+from PIL import Image
+
+# Load the model
+from ImageRecognitionML.main import Net  # Assuming Net is the model class in main.py
+
+# Create an instance of the model
+model = Net()
+
+# Load the saved model weights
+model.load_state_dict(torch.load('image_recognition_model.pth'))
+
+# Set the model to evaluation mode
+model.eval()
+
+# Define the FGSM attack
+def fgsm_attack(data, epsilon, data_grad):
+    sign_data_grad = data_grad.sign()
+    perturbed_data = data + epsilon * sign_data_grad
+    perturbed_data = torch.clamp(perturbed_data, 0, 1)
+    return perturbed_data
+
+# FGSM adversarial example generation
+def generate_fgsm_adversarial_example(model, data, target, epsilon):
+    data.requires_grad = True
+    output = model(data)
+    loss = nn.CrossEntropyLoss()(output, target)
+    model.zero_grad()
+    loss.backward()
+    data_grad = data.grad.data
+    perturbed_data = fgsm_attack(data, epsilon, data_grad)
+    return perturbed_data
+
+# Load the dataset (CIFAR-10)
+transform = transforms.Compose([
+    transforms.ToTensor(),
+    transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+])
+test_data = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+
+# Define epsilon value (controls the magnitude of perturbation)
+epsilon = 0.07
+
+# Select a sample from the test set
+idx = 6  # You can choose any index
+data, target = test_data[idx][0], test_data[idx][1]
+
+# Generate adversarial example using FGSM
+adversarial_data = generate_fgsm_adversarial_example(model, data.unsqueeze(0), torch.tensor([target]), epsilon)
+
+# Evaluate the model predictions on original and adversarial examples
+original_prediction = torch.argmax(model(data.unsqueeze(0))).item()
+adversarial_prediction = torch.argmax(model(adversarial_data)).item()
+
+# Class names in CIFAR-10
+classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
+
+print(f'Chosen index: {idx}')
+
+print(f'Original prediction: {original_prediction} ({classes[original_prediction]})')
+print(f'Adversarial prediction: {adversarial_prediction} ({classes[adversarial_prediction]})')
+
+# Save the adversarial image
+def save_image(tensor, filename):
+    image = tensor.squeeze().cpu().detach().numpy()
+    image = image.transpose(1, 2, 0)  # Convert from (C, H, W) to (H, W, C)
+    mean = np.array([0.5, 0.5, 0.5])
+    std = np.array([0.5, 0.5, 0.5])
+    image = std * image + mean  # De-normalize
+    image = np.clip(image, 0, 1)
+    plt.imsave(filename, image)
+
+    # Define the new size for resizing
+    new_size = (image.shape[1] * 2, image.shape[0] * 2)
+
+
+    # Convert to PIL image, resize, and save
+    pil_image = Image.fromarray((image * 255).astype(np.uint8))
+    pil_image = pil_image.resize(new_size, Image.ANTIALIAS)
+    pil_image.save(filename)
+
+save_image(adversarial_data, 'adversarial_image.png')
+print('Adversarial image saved as adversarial_image.png')
+
+
+print('Class indices:')
+for i, class_name in enumerate(classes):
+    print(f'{i}: {class_name}')
