@@ -57,13 +57,11 @@ class Discriminator(torch.nn.Module):
         self.output = nn.Sequential(nn.Linear(1024 * 4 * 4, 1), nn.Sigmoid())
 
     def forward(self, x):
-        # Convolutional layers
         x = self.conv1(x)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
 
-        # Flatten and apply sigmoid
         x = x.view(-1, 1024 * 4 * 4)
         x = self.output(x)
         return x
@@ -89,7 +87,6 @@ class Generator(torch.nn.Module):
         self.output = torch.nn.Tanh()
 
     def forward(self, x):
-        # Project and reshape
         x = self.linear(x)
         x = x.view(x.shape[0], 1024, 4, 4)
 
@@ -117,7 +114,6 @@ discriminator = Discriminator()
 generator.apply(init_weights)
 discriminator.apply(init_weights)
 
-# Enable cuda if available
 if torch.cuda.is_available():
     generator.cuda()
     discriminator.cuda()
@@ -127,11 +123,9 @@ if torch.cuda.is_available():
 d_optimizer = optim.Adam(discriminator.parameters(), lr=LR, betas=(0.5, 0.999))
 g_optimizer = optim.Adam(generator.parameters(), lr=LR, betas=(0.5, 0.999))
 
-# Loss function
+
 # criterion = nn.MSELoss()
 criterion = nn.BCELoss()
-
-## Use Adam Optimizer with BCELoss function
 
 def real_data_target(size):
     data = Variable(torch.ones(size, 1))
@@ -148,40 +142,28 @@ def fake_data_target(size):
 
 
 def train_discriminator(optimizer, real_data, fake_data):
-    # Reset gradients
     optimizer.zero_grad()
 
-    # 1.1 Train on Real Data
     prediction_real = discriminator(real_data)
-    # Calculate error and backpropagate
     error_real = criterion(prediction_real, real_data_target(real_data.size(0)))
     error_real.backward()
 
-    # 1.2 Train on Fake Data
     prediction_fake = discriminator(fake_data)
-    # Calculate error and backpropagate
     error_fake = criterion(prediction_fake, fake_data_target(real_data.size(0)))
     error_fake.backward()
 
-    # 1.3 Update weights with gradients
     optimizer.step()
 
-    # Return error
     return error_real + error_fake, prediction_real, prediction_fake
 
 
 def train_generator(optimizer, fake_data):
-    # 2. Train Generator
-    # Reset gradients
+
     optimizer.zero_grad()
-    # Sample noise and generate fake data
     prediction = discriminator(fake_data)
-    # Calculate error and backpropagate
     error = criterion(prediction, real_data_target(prediction.size(0)))
     error.backward()
-    # Update weights with gradients
     optimizer.step()
-    # Return error
     return error
 
 test_noise = noise(NUM_TEST_SAMPLES)
@@ -190,22 +172,18 @@ test_noise = noise(NUM_TEST_SAMPLES)
 def generate_images(test_images, num_images, normalize=True):
     images = test_images
 
-    # Make horizontal grid from image tensor
     horizontal_grid = vutils.make_grid(images, normalize=normalize, scale_each=True)
-    # Make vertical grid from image tensor
     nrows = int(np.sqrt(num_images))
     grid = vutils.make_grid(images, nrow=nrows, normalize=True, scale_each=True)
 
-    # Plot and save horizontal
-    fig = plt.figure(figsize=(16, 16))
+    #fig = plt.figure(figsize=(16, 16))
     plt.imshow(np.moveaxis(horizontal_grid.numpy(), 0, -1))
     plt.axis('off')
     if True:
         display.display(plt.gcf())
     plt.close()
 
-    # Save squared
-    fig = plt.figure()
+    #fig = plt.figure()
     plt.imshow(np.moveaxis(grid.numpy(), 0, -1))
     plt.axis('off')
     plt.close()
@@ -219,33 +197,22 @@ for epoch in range(NUM_EPOCHS):
 
     for n_batch, (real_batch, _) in enumerate(progress_bar(data_loader)):
         print("\n yoyo #", n_batch, "in progress...")
-        # 1. Train Discriminator
         #     inputs, _ = real_batch
         real_data = Variable(real_batch)
         if torch.cuda.is_available():
             real_data = real_data.cuda()
-        # Generate fake data
         fake_data = generator(noise(real_data.size(0))).detach()
-        # Train D
         d_error, d_pred_real, d_pred_fake = train_discriminator(d_optimizer, real_data, fake_data)
 
-        # 2. Train Generator
-        # Generate fake data
         fake_data = generator(noise(real_batch.size(0)))
-        # Train G
         g_error = train_generator(g_optimizer, fake_data)
 
         d_running_loss += d_error.item()
         g_running_loss += g_error.item()
 
-    #     loss = criterion(outputs, inputs)
+    #loss = criterion(outputs, inputs)
     print("Loss (Discriminator):", d_running_loss)
     print("Loss (Generator):", g_running_loss)
 
-    test_images = generator(test_noise).data.cpu()
+    test_images = generator(test_noise).data.cuda()
     generate_images(test_images, NUM_TEST_SAMPLES)
-
-num_samples = NUM_TEST_SAMPLES
-test_noise = noise(num_samples)
-test_images = generator(test_noise).data.cpu()
-generate_images(test_images, NUM_TEST_SAMPLES)
